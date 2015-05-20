@@ -1,0 +1,2 @@
+# interval
+generic interval type

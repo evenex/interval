@@ -271,7 +271,7 @@ if (not (is_interval!T) && is_interval!U)
 /* test if a point is between two values, inclusive 
 */
 bool between (T, U, V) (T t, U t0, V t1) 
-{/*...}*/
+{
 	return t0 <= t && t <= t1;
 }
 

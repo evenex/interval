@@ -8,6 +8,5 @@
 		"meta": "~master",
 		"infinity": "~master"
 	},
-	"targetType" : "executable",
-	"dflags": ["-main"]
+	"targetType" : "executable"
 }

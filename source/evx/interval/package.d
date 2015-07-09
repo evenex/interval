@@ -1,17 +1,19 @@
 module evx.interval;
 
-private {/*import}*/
+private {//import
 	import std.algorithm: min, max;
 
 	import evx.meta;
 	import evx.infinity;
 }
 
-/* predicate to test for intervals
+/**
+	 predicate to test for intervals
 */
 enum is_interval (T) = is (T == Interval!U, U...);
 
-/* half-open interval type, suitable for bounds checking
+/**
+	 half-open interval type, suitable for bounds checking
 */
 struct Interval (LeftType, RightType)
 if (All!(Not!(λ!q{(T) = is (T == const(T))}), LeftType, RightType))
@@ -26,12 +28,19 @@ if (All!(Not!(λ!q{(T) = is (T == const(T))}), LeftType, RightType))
 
 	mixin IntervalBase;
 }
+/**
+    ditto
+*/
 template Interval (Left, Right)
 if (Any!(λ!q{(T) = is (T == const(T))}, Left, Right))
 {
 	alias Interval = Interval!(Unqual!Left, Unqual!Right);
 }
+/**
+    ditto
+*/
 alias Interval (T) = Interval!(T,T);
+///
 unittest {
 	Interval!int x0;
 	Interval!uint x1;
@@ -59,7 +68,8 @@ unittest {
 	assert (y4 == [-inf, inf]);
 }
 
-/*
+/**
+	
 	untyped infinite interval
 */
 struct Interval (T : void)
@@ -78,7 +88,13 @@ struct Interval (T : void)
 	mixin IntervalBase;
 }
 
-/* interval constructors 
+auto fmap (alias f, Left, Right)(Interval!(Left, Right) bounds)
+{
+	return interval (f(bounds.left), f(bounds.right));
+}
+
+/**
+	 interval constructors 
 */
 auto interval (T)(Infinite!void left, Infinite!void right)
 in {
@@ -87,6 +103,9 @@ in {
 body {
 	return Interval!(Repeat!(2, Infinite!T))();
 }
+/**
+    ditto
+*/
 auto interval (Infinite!void left, Infinite!void right)
 in {
 	assert (left.is_negative && right.is_positive);
@@ -94,10 +113,16 @@ in {
 body {
 	return Interval!void ();
 }
+/**
+    ditto
+*/
 auto interval (T)(T[2] bounds)
 {
 	return Interval!T (bounds[0], bounds[1]);
 }
+/**
+    ditto
+*/
 auto interval (T,U)(T left, U right)
 {
 	static if (is (T == Infinite!V, V))
@@ -125,6 +150,9 @@ auto interval (T,U)(T left, U right)
 
 	else return Interval!(CommonType!(T,U))(left, right);
 }
+/**
+    ditto
+*/
 auto interval (T)(T point)
 if (not (is (T == U[2], U) || is (T == Infinite!U, U)))
 {
@@ -132,6 +160,7 @@ if (not (is (T == U[2], U) || is (T == Infinite!U, U)))
 		return point;
 	else return interval (point, point);
 }
+///
 unittest {
 	auto a = interval (0, 10);
 	assert (a.width == 10);
@@ -161,15 +190,22 @@ unittest {
 	assert (e.width == infinity);
 }
 
-/* distance between the endpoints of an interval
+/**
+	 distance between the endpoints of an interval
 */
 auto width (T)(T interval)
 if (is_interval!T)
 {
 	return interval.right - interval.left;
 }
+///
+unittest {
+    assert (interval (0,10).width == 10);
+    assert (interval (2.5, 5.0).width == 2.5);
+}
 
-/* test if two intervals overlap 
+/**
+	 test if two intervals overlap 
 */
 bool overlaps (T,U)(T a, U b)
 if (All!(is_interval, T, U))
@@ -178,6 +214,7 @@ if (All!(is_interval, T, U))
 		return b.left < a.right;
 	else return a.left < b.right;
 }
+///
 unittest {
 	auto a = interval (0, 10);
 	auto b = interval (11, 13);
@@ -194,13 +231,15 @@ unittest {
 	assert (a.not!overlaps (b));
 }
 
-/* test if an interval is contained within another 
+/**
+	 test if an interval is contained within another 
 */
 bool is_contained_in (T,U)(T a, U b)
 if (All!(is_interval, T, U))
 {
 	return a.left >= b.left && a.right <= b.right;
 }
+///
 unittest {
 	auto a = interval (0, 10);
 	auto b = interval (1, 5);
@@ -235,12 +274,13 @@ unittest {
 	assert (e.not!is_contained_in (d));
 }
 
-/* test if a point is contained within an interval 
+/**
+	 test if a point is contained within an interval 
 */
 bool is_contained_in (T,U)(T point, U interval)
 if (not (is_interval!T) && is_interval!U)
 {
-	static if (is (T == V[2], V))
+	static if (is (T == V[2], V)) // REVIEW
 	{
 		auto x = point[0];
 		auto y = point[1];
@@ -258,15 +298,27 @@ if (not (is_interval!T) && is_interval!U)
 		|| (interval.left == interval.right && x == interval.left)
 	);
 }
+///
+unittest {
+    assert (1.is_contained_in (interval (0,2)));
+    assert (6.not!is_contained_in (interval (0,2)));
+}
 
-/* test if a point is between two values, inclusive 
+/**
+	 test if a point is between two values, inclusive 
 */
 bool between (T, U, V) (T t, U t0, V t1) 
 {
 	return t0 <= t && t <= t1;
 }
+///
+unittest {
+    assert (1.between (0,2));
+    assert (6.not!between (0,2));
+}
 
-/* clamp a value to an interval 
+/**
+	 clamp a value to an interval 
 */
 auto clamp (T,U)(T value, U interval)
 if (is_interval!U)
@@ -276,13 +328,23 @@ if (is_interval!U)
 
 	return value;
 }
+///
+unittest {
+    assert (5.clamp (interval (0, 3)) == 3);
+    assert ((-10).clamp (interval (0, 3)) == 0);
+}
 
-/*
+/**
+	
 	measure the limit of ranges
 */
 Interval!size_t limit (uint i : 0, S)(const S space)
 {
 	return interval!size_t (0, space.length);
+}
+///
+unittest {
+    assert ([1,2,3,4].limit!0 == interval (0,4));
 }
 
 private {//impl
